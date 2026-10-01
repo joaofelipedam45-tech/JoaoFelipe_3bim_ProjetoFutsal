@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jogadores - Futsal Manager</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <div class="logo">⚽ Futsal Manager</div>
+    </div>
+  </header>
+
+  <nav>
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/tecnico.html">Técnicos</a></li>
+      <li><a href="/time.html">Times</a></li>
+      <li><a href="/jogador.html">Jogadores</a></li>
+      <li><a href="/competicao.html">Competições</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section>
+      <h1>Gerenciamento de Jogadores</h1>
+
+      <div class="alert" id="message"></div>
+
+      <h2>Adicionar Novo Jogador</h2>
+      <form id="formJogador">
+        <div class="form-group">
+          <label for="nome">Nome:</label>
+          <input type="text" id="nome" name="nome" required>
+        </div>
+        <div class="form-group">
+          <label for="numero">Número da Camisa:</label>
+          <input type="number" id="numero" name="numero" required min="1" max="99">
+        </div>
+        <div class="form-group">
+          <label for="posicao">Posição:</label>
+          <select id="posicao" name="posicao">
+            <option value="">Selecione uma posição</option>
+            <option value="Goleiro">Goleiro</option>
+            <option value="Fixo">Fixo</option>
+            <option value="Ala Direita">Ala Direita</option>
+            <option value="Ala Esquerda">Ala Esquerda</option>
+            <option value="Pivô">Pivô</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="id_time">Time:</label>
+          <select id="id_time" name="id_time">
+            <option value="">Selecione um time</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="data_nascimento">Data de Nascimento:</label>
+          <input type="date" id="data_nascimento" name="data_nascimento">
+        </div>
+        <div class="form-group">
+          <label for="foto">URL da Foto:</label>
+          <input type="text" id="foto" name="foto" placeholder="Ex: /images/jogador.png">
+        </div>
+        <button type="submit" class="btn btn-success">Adicionar Jogador</button>
+      </form>
+
+      <h2>Lista de Jogadores</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>Número</th>
+            <th>Posição</th>
+            <th>Time</th>
+            <th>Data Nascimento</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="jogadoresList">
+          <tr>
+            <td colspan="7" style="text-align: center;">Carregando...</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>Futsal Manager - Sistema de Gerenciamento</strong></p>
+    <p>Aluno: <strong>João Felipe</strong> | DW1 - 3º Bimestre | Ano: 2026</p>
+  </footer>
+
+  <script>
+    const API_URL = '/api/jogadores';
+    const API_TIMES = '/api/times';
+
+    // Carregar dados ao abrir a página
+    document.addEventListener('DOMContentLoaded', () => {
+      loadTimes();
+      loadJogadores();
+    });
+
+    // Formulário de submissão
+    document.getElementById('formJogador').addEventListener('submit', handleSubmit);
+
+    function loadTimes() {
+      fetch(API_TIMES)
+        .then(response => response.json())
+        .then(data => {
+          const select = document.getElementById('id_time');
+          data.forEach(time => {
+            const option = document.createElement('option');
+            option.value = time.id;
+            option.textContent = time.nome;
+            select.appendChild(option);
+          });
+        })
+        .catch(error => console.error('Erro ao carregar times:', error));
+    }
+
+    function loadJogadores() {
+      fetch(API_URL)
+        .then(response => response.json())
+        .then(data => {
+          const tbody = document.getElementById('jogadoresList');
+          tbody.innerHTML = '';
+
+          if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhum jogador cadastrado.</td></tr>';
+            return;
+          }
+
+          data.forEach(jogador => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${jogador.id}</td>
+              <td>${jogador.nome}</td>
+              <td>${jogador.numero}</td>
+              <td>${jogador.posicao || '-'}</td>
+              <td>${jogador.time_nome || '-'}</td>
+              <td>${jogador.data_nascimento ? new Date(jogador.data_nascimento).toLocaleDateString('pt-BR') : '-'}</td>
+              <td>
+                <div class="table-actions">
+                  <button class="btn-edit" onclick="editJogador(${jogador.id})">Editar</button>
+                  <button class="btn-delete" onclick="deleteJogador(${jogador.id})">Deletar</button>
+                </div>
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
+        })
+        .catch(error => showMessage('Erro ao carregar jogadores: ' + error, 'error'));
+    }
+
+    function handleSubmit(e) {
+      e.preventDefault();
+
+      const formData = {
+        nome: document.getElementById('nome').value,
+        numero: parseInt(document.getElementById('numero').value),
+        posicao: document.getElementById('posicao').value,
+        id_time: document.getElementById('id_time').value || null,
+        data_nascimento: document.getElementById('data_nascimento').value || null,
+        foto: document.getElementById('foto').value || null
+      };
+
+      fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      })
+        .then(response => response.json())
+        .then(data => {
+          showMessage('Jogador adicionado com sucesso!', 'success');
+          document.getElementById('formJogador').reset();
+          loadJogadores();
+        })
+        .catch(error => showMessage('Erro ao adicionar jogador: ' + error, 'error'));
+    }
+
+    function editJogador(id) {
+      const nome = prompt('Novo nome do jogador:');
+      if (!nome) return;
+
+      const numero = prompt('Novo número:');
+      const posicao = prompt('Nova posição:');
+
+      const formData = {
+        nome: nome,
+        numero: parseInt(numero),
+        posicao: posicao,
+        id_time: null,
+        data_nascimento: null,
+        foto: null
+      };
+
+      fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      })
+        .then(response => response.json())
+        .then(data => {
+          showMessage('Jogador atualizado com sucesso!', 'success');
+          loadJogadores();
+        })
+        .catch(error => showMessage('Erro ao atualizar jogador: ' + error, 'error'));
+    }
+
+    function deleteJogador(id) {
+      if (!confirm('Tem certeza que deseja deletar este jogador?')) return;
+
+      fetch(`${API_URL}/${id}`, {
+        method: 'DELETE'
+      })
+        .then(response => response.json())
+        .then(data => {
+          showMessage('Jogador deletado com sucesso!', 'success');
+          loadJogadores();
+        })
+        .catch(error => showMessage('Erro ao deletar jogador: ' + error, 'error'));
+    }
+
+    function showMessage(message, type) {
+      const alertDiv = document.getElementById('message');
+      alertDiv.textContent = message;
+      alertDiv.className = `alert ${type} show`;
+      setTimeout(() => {
+        alertDiv.className = 'alert';
+      }, 5000);
+    }
+  </script>
+</body>
+</html>

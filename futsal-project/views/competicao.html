@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Competições - Futsal Manager</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <div class="logo">⚽ Futsal Manager</div>
+    </div>
+  </header>
+
+  <nav>
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/tecnico.html">Técnicos</a></li>
+      <li><a href="/time.html">Times</a></li>
+      <li><a href="/jogador.html">Jogadores</a></li>
+      <li><a href="/competicao.html">Competições</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section>
+      <h1>Gerenciamento de Competições</h1>
+
+      <div class="alert" id="message"></div>
+
+      <h2>Adicionar Nova Competição</h2>
+      <form id="formCompeticao">
+        <div class="form-group">
+          <label for="nome">Nome da Competição:</label>
+          <input type="text" id="nome" name="nome" required>
+        </div>
+        <div class="form-group">
+          <label for="descricao">Descrição:</label>
+          <textarea id="descricao" name="descricao" rows="4"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="data_inicio">Data de Início:</label>
+          <input type="date" id="data_inicio" name="data_inicio">
+        </div>
+        <div class="form-group">
+          <label for="data_fim">Data de Término:</label>
+          <input type="date" id="data_fim" name="data_fim">
+        </div>
+        <div class="form-group">
+          <label for="local">Local:</label>
+          <input type="text" id="local" name="local" placeholder="Ex: São Paulo, SP">
+        </div>
+        <button type="submit" class="btn btn-success">Adicionar Competição</button>
+      </form>
+
+      <h2>Lista de Competições</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>Data Início</th>
+            <th>Data Fim</th>
+            <th>Local</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="competicoesList">
+          <tr>
+            <td colspan="6" style="text-align: center;">Carregando...</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>Futsal Manager - Sistema de Gerenciamento</strong></p>
+    <p>Aluno: <strong>João Felipe</strong> | DW1 - 3º Bimestre | Ano: 2026</p>
+  </footer>
+
+  <script>
+    const API_URL = '/api/competicoes';
+
+    // Carregar competições ao abrir a página
+    document.addEventListener('DOMContentLoaded', loadCompeticoes);
+
+    // Formulário de submissão
+    document.getElementById('formCompeticao').addEventListener('submit', handleSubmit);
+
+    function loadCompeticoes() {
+      fetch(API_URL)
+        .then(response => response.json())
+        .then(data => {
+          const tbody = document.getElementById('competicoesList');
+          tbody.innerHTML = '';
+
+          if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhuma competição cadastrada.</td></tr>';
+            return;
+          }
+
+          data.forEach(competicao => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${competicao.id}</td>
+              <td>${competicao.nome}</td>
+              <td>${competicao.data_inicio ? new Date(competicao.data_inicio).toLocaleDateString('pt-BR') : '-'}</td>
+              <td>${competicao.data_fim ? new Date(competicao.data_fim).toLocaleDateString('pt-BR') : '-'}</td>
+              <td>${competicao.local || '-'}</td>
+              <td>
+                <div class="table-actions">
+                  <button class="btn-view" onclick="viewCompeticao(${competicao.id})">Ver</button>
+                  <button class="btn-edit" onclick="editCompeticao(${competicao.id})">Editar</button>
+                  <button class="btn-delete" onclick="deleteCompeticao(${competicao.id})">Deletar</button>
+                </div>
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
+        })
+        .catch(error => showMessage('Erro ao carregar competições: ' + error, 'error'));
+    }
+
+    function handleSubmit(e) {
+      e.preventDefault();
+
+      const formData = {
+        nome: document.getElementById('nome').value,
+        descricao: document.getElementById('descricao').value || null,
+        data_inicio: document.getElementById('data_inicio').value || null,
+        data_fim: document.getElementById('data_fim').value || null,
+        local: document.getElementById('local').value || null
+      };
+
+      fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      })
+        .then(response => response.json())
+        .then(data => {
+          showMessage('Competição adicionada com sucesso!', 'success');
+          document.getElementById('formCompeticao').reset();
+          loadCompeticoes();
+        })
+        .catch(error => showMessage('Erro ao adicionar competição: ' + error, 'error'));
+    }
+
+    function viewCompeticao(id) {
+      fetch(`${API_URL}/${id}`)
+        .then(response => response.json())
+        .then(competicao => {
+          alert(`Nome: ${competicao.nome}\n\nDescrição: ${competicao.descricao || 'N/A'}\n\nLocal: ${competicao.local || 'N/A'}`);
+        })
+        .catch(error => showMessage('Erro ao carregar detalhes: ' + error, 'error'));
+    }
+
+    function editCompeticao(id) {
+      const nome = prompt('Novo nome da competição:');
+      if (!nome) return;
+
+      const descricao = prompt('Nova descrição:');
+      const local = prompt('Novo local:');
+
+      const formData = {
+        nome: nome,
+        descricao: descricao,
+        data_inicio: null,
+        data_fim: null,
+        local: local
+      };
+
+      fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      })
+        .then(response => response.json())
+        .then(data => {
+          showMessage('Competição atualizada com sucesso!', 'success');
+          loadCompeticoes();
+        })
+        .catch(error => showMessage('Erro ao atualizar competição: ' + error, 'error'));
+    }
+
+    function deleteCompeticao(id) {
+      if (!confirm('Tem certeza que deseja deletar esta competição?')) return;
+
+      fetch(`${API_URL}/${id}`, {
+        method: 'DELETE'
+      })
+        .then(response => response.json())
+        .then(data => {
+          showMessage('Competição deletada com sucesso!', 'success');
+          loadCompeticoes();
+        })
+        .catch(error => showMessage('Erro ao deletar competição: ' + error, 'error'));
+    }
+
+    function showMessage(message, type) {
+      const alertDiv = document.getElementById('message');
+      alertDiv.textContent = message;
+      alertDiv.className = `alert ${type} show`;
+      setTimeout(() => {
+        alertDiv.className = 'alert';
+      }, 5000);
+    }
+  </script>
+</body>
+</html>

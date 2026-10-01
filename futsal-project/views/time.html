@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Times - Futsal Manager</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <div class="logo">⚽ Futsal Manager</div>
+    </div>
+  </header>
+
+  <nav>
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/tecnico.html">Técnicos</a></li>
+      <li><a href="/time.html">Times</a></li>
+      <li><a href="/jogador.html">Jogadores</a></li>
+      <li><a href="/competicao.html">Competições</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section>
+      <h1>Gerenciamento de Times</h1>
+
+      <div class="alert" id="message"></div>
+
+      <h2>Adicionar Novo Time</h2>
+      <form id="formTime">
+        <div class="form-group">
+          <label for="nome">Nome do Time:</label>
+          <input type="text" id="nome" name="nome" required>
+        </div>
+        <div class="form-group">
+          <label for="cidade">Cidade:</label>
+          <input type="text" id="cidade" name="cidade">
+        </div>
+        <div class="form-group">
+          <label for="id_tecnico">Técnico:</label>
+          <select id="id_tecnico" name="id_tecnico">
+            <option value="">Selecione um técnico</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="logo">URL da Logo:</label>
+          <input type="text" id="logo" name="logo" placeholder="Ex: /images/time-logo.png">
+        </div>
+        <button type="submit" class="btn btn-success">Adicionar Time</button>
+      </form>
+
+      <h2>Lista de Times</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>Cidade</th>
+            <th>Técnico</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="timesList">
+          <tr>
+            <td colspan="5" style="text-align: center;">Carregando...</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>Futsal Manager - Sistema de Gerenciamento</strong></p>
+    <p>Aluno: <strong>João Felipe</strong> | DW1 - 3º Bimestre | Ano: 2026</p>
+  </footer>
+
+  <script>
+    const API_URL = '/api/times';
+    const API_TECNICOS = '/api/tecnicos';
+
+    // Carregar dados ao abrir a página
+    document.addEventListener('DOMContentLoaded', () => {
+      loadTecnicos();
+      loadTimes();
+    });
+
+    // Formulário de submissão
+    document.getElementById('formTime').addEventListener('submit', handleSubmit);
+
+    function loadTecnicos() {
+      fetch(API_TECNICOS)
+        .then(response => response.json())
+        .then(data => {
+          const select = document.getElementById('id_tecnico');
+          data.forEach(tecnico => {
+            const option = document.createElement('option');
+            option.value = tecnico.id;
+            option.textContent = tecnico.nome;
+            select.appendChild(option);
+          });
+        })
+        .catch(error => console.error('Erro ao carregar técnicos:', error));
+    }
+
+    function loadTimes() {
+      fetch(API_URL)
+        .then(response => response.json())
+        .then(data => {
+          const tbody = document.getElementById('timesList');
+          tbody.innerHTML = '';
+
+          if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhum time cadastrado.</td></tr>';
+            return;
+          }
+
+          data.forEach(time => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${time.id}</td>
+              <td>${time.nome}</td>
+              <td>${time.cidade || '-'}</td>
+              <td>${time.tecnico_nome || '-'}</td>
+              <td>
+                <div class="table-actions">
+                  <button class="btn-edit" onclick="editTime(${time.id})">Editar</button>
+                  <button class="btn-delete" onclick="deleteTime(${time.id})">Deletar</button>
+                </div>
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
+        })
+        .catch(error => showMessage('Erro ao carregar times: ' + error, 'error'));
+    }
+
+    function handleSubmit(e) {
+      e.preventDefault();
+
+      const formData = {
+        nome: document.getElementById('nome').value,
+        cidade: document.getElementById('cidade').value,
+        id_tecnico: document.getElementById('id_tecnico').value || null,
+        logo: document.getElementById('logo').value || null
+      };
+
+      fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      })
+        .then(response => response.json())
+        .then(data => {
+          showMessage('Time adicionado com sucesso!', 'success');
+          document.getElementById('formTime').reset();
+          loadTimes();
+        })
+        .catch(error => showMessage('Erro ao adicionar time: ' + error, 'error'));
+    }
+
+    function editTime(id) {
+      const nome = prompt('Novo nome do time:');
+      if (!nome) return;
+
+      const cidade = prompt('Nova cidade:');
+      const logo = prompt('Nova URL da logo:');
+
+      const formData = {
+        nome: nome,
+        cidade: cidade,
+        id_tecnico: null,
+        logo: logo
+      };
+
+      fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      })
+        .then(response => response.json())
+        .then(data => {
+          showMessage('Time atualizado com sucesso!', 'success');
+          loadTimes();
+        })
+        .catch(error => showMessage('Erro ao atualizar time: ' + error, 'error'));
+    }
+
+    function deleteTime(id) {
+      if (!confirm('Tem certeza que deseja deletar este time?')) return;
+
+      fetch(`${API_URL}/${id}`, {
+        method: 'DELETE'
+      })
+        .then(response => response.json())
+        .then(data => {
+          showMessage('Time deletado com sucesso!', 'success');
+          loadTimes();
+        })
+        .catch(error => showMessage('Erro ao deletar time: ' + error, 'error'));
+    }
+
+    function showMessage(message, type) {
+      const alertDiv = document.getElementById('message');
+      alertDiv.textContent = message;
+      alertDiv.className = `alert ${type} show`;
+      setTimeout(() => {
+        alertDiv.className = 'alert';
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
